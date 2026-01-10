@@ -73,6 +73,7 @@ class ChatSummaryWorker:
         self._lock = threading.Lock()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
+        self.rates = []
 
     def snapshot(self) -> Dict[str, object]:
         with self._lock:
@@ -128,6 +129,8 @@ class ChatSummaryWorker:
                     messages.pop(0)
 
                 rate = compute_rate(messages, rate_sample_size)
+                self.rates.append(rate)
+                print(str(len(messages)))
                 window_seconds = compute_window_seconds(
                     rate, min_window_seconds, max_window_seconds
                 )

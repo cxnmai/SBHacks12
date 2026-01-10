@@ -55,11 +55,27 @@ def parse_chat_line(line: str) -> Tuple[float, str]:
 def compute_rate(messages: List[Tuple[float, str]], sample_size: int) -> float:
     if len(messages) < 2:
         return 0.05
-    sample = messages[-sample_size:]
-    start_ts = sample[0][0]
-    end_ts = sample[-1][0]
-    span = max(end_ts - start_ts, 1.0)
-    return len(sample) / span
+    
+    # Use current time for a fixed time window (not message-based window)
+    current_time = time.time()
+    time_window = 30.0  # Look at last 30 seconds
+    
+    cutoff_time = current_time - time_window
+    window_messages = [msg for msg in messages if msg[0] >= cutoff_time]
+    
+    if len(window_messages) < 2:
+        # Fallback to sample_size approach if not enough messages in time window
+        sample = messages[-min(sample_size, len(messages)):]
+        start_ts = sample[0][0]
+        end_ts = sample[-1][0]
+        span = max(end_ts - start_ts, 1.0)
+        return len(sample) / span
+    
+    # Calculate rate from fixed time window (start time stays constant)
+    oldest_ts = window_messages[0][0]
+    actual_span = current_time - oldest_ts
+    actual_span = max(actual_span, 1.0)  # Prevent division by zero
+    return len(window_messages) / actual_span
 
 
 def compute_window_seconds(rate: float, min_window: int, max_window: int) -> int:
