@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 
 from flask import Flask, jsonify, render_template, request
 
+from chatvelocitychart import ChatVelocityChart
 from chatsynthesizer import (
     compute_rate,
     compute_window_seconds,
@@ -14,7 +15,7 @@ from chatsynthesizer import (
     summarize_with_keywords,
 )
 from gemini import load_dotenv
-from streamchat import get_live_chat_id, get_video_metadata, iter_live_chat_messages
+from ytstreamchat import get_live_chat_id, get_video_metadata, iter_live_chat_messages
 
 load_dotenv()
 
@@ -73,7 +74,7 @@ class ChatSummaryWorker:
         self._lock = threading.Lock()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
-        self.rates = []
+        self.velocity_chart = ChatVelocityChart()
 
     def snapshot(self) -> Dict[str, object]:
         with self._lock:
@@ -85,7 +86,7 @@ class ChatSummaryWorker:
                 "videoTitle": self.video_title,
                 "videoChannel": self.video_channel,
                 "summaryHistory": list(self.summary_history),
-                "rates": list(self.rates),
+                "rates": self.velocity_chart.get_rates(),
             }
 
     def _set_error(self, message: str) -> None:
@@ -130,11 +131,7 @@ class ChatSummaryWorker:
                     messages.pop(0)
 
                 rate = compute_rate(messages, rate_sample_size)
-                with self._lock:
-                    self.rates.append(rate)
-                    # Limit rates array to last 200 points to prevent memory issues
-                    if len(self.rates) > 200:
-                        self.rates = self.rates[-200:]
+                self.velocity_chart.add_rate(rate)
                 print(str(len(messages)))
                 window_seconds = compute_window_seconds(
                     rate, min_window_seconds, max_window_seconds
