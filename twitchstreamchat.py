@@ -97,7 +97,7 @@ def iter_live_chat_messages(
     channel_name: str,
     oauth_token: str,
     nickname: str,
-) -> dict:
+):
     server = ("irc.chat.twitch.tv", 6697)
     backoff_seconds = 2
     while True:

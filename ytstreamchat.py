@@ -1,10 +1,13 @@
 import argparse
 import json
 import os
+import ssl
 import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+
+import certifi
 
 
 YOUTUBE_API_BASE = "https://www.googleapis.com/youtube/v3"
@@ -27,8 +30,9 @@ def load_dotenv(path: str = ".env") -> None:
 
 def _get_json(url: str) -> dict:
     request = Request(url)
+    context = ssl.create_default_context(cafile=certifi.where())
     try:
-        with urlopen(request, timeout=15) as response:
+        with urlopen(request, timeout=15, context=context) as response:
             payload = response.read().decode("utf-8")
             return json.loads(payload)
     except HTTPError as exc:
