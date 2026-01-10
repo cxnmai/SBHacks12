@@ -140,13 +140,14 @@ def iter_live_chat_messages(api_key: str, live_chat_id: str, poll_seconds: int =
 
 
 def main() -> int:
+    load_dotenv()
     parser = argparse.ArgumentParser(
         description="Stream YouTube live chat messages for a livestream."
     )
     parser.add_argument("--video-id", required=True, help="YouTube livestream video ID")
     parser.add_argument(
         "--api-key",
-        default=os.getenv("YOUTUBE_API_KEY", ""),
+        default="",
         help="YouTube Data API v3 key (or set YOUTUBE_API_KEY)",
     )
     parser.add_argument(
@@ -157,14 +158,13 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    load_dotenv()
-
-    if not args.api_key:
+    api_key = args.api_key or os.getenv("YOUTUBE_API_KEY", "")
+    if not api_key:
         raise SystemExit("missing api key: pass --api-key or set YOUTUBE_API_KEY")
 
-    live_chat_id = get_live_chat_id(args.api_key, args.video_id)
+    live_chat_id = get_live_chat_id(api_key, args.video_id)
     for msg in iter_live_chat_messages(
-        args.api_key, live_chat_id, poll_seconds=args.poll_seconds
+        api_key, live_chat_id, poll_seconds=args.poll_seconds
     ):
         display_name = msg.get("display_name") or "unknown"
         message = msg.get("message") or ""
