@@ -148,46 +148,54 @@ def iter_live_chat_messages(
 
 
 def main() -> int:
+    load_dotenv()
     parser = argparse.ArgumentParser(
         description="Stream Twitch live chat messages for a channel."
     )
     parser.add_argument("--channel", required=True, help="Twitch channel name")
     parser.add_argument(
         "--oauth-token",
-        default=os.getenv("TWITCH_OAUTH_TOKEN", ""),
+        default="",
         help="OAuth token (or set TWITCH_OAUTH_TOKEN)",
     )
     parser.add_argument(
         "--nickname",
-        default=os.getenv("TWITCH_CHAT_NICK", ""),
+        default="",
         help="Chat nickname (or set TWITCH_CHAT_NICK)",
     )
     parser.add_argument(
         "--client-id",
-        default=os.getenv("TWITCH_CLIENT_ID", ""),
+        default="",
         help="Twitch client ID for metadata lookups",
     )
     parser.add_argument(
         "--access-token",
-        default=os.getenv("TWITCH_ACCESS_TOKEN", ""),
+        default="",
         help="Twitch access token for metadata lookups",
     )
     args = parser.parse_args()
 
-    load_dotenv()
+    oauth_token = args.oauth_token or os.getenv("TWITCH_OAUTH_TOKEN", "")
+    nickname = args.nickname or os.getenv("TWITCH_CHAT_NICK", "")
+    client_id = args.client_id or os.getenv("TWITCH_CLIENT_ID", "")
+    access_token = args.access_token or os.getenv("TWITCH_ACCESS_TOKEN", "")
 
-    if not args.oauth_token:
-        raise SystemExit("missing oauth token: pass --oauth-token or set TWITCH_OAUTH_TOKEN")
-    if not args.nickname:
-        raise SystemExit("missing nickname: pass --nickname or set TWITCH_CHAT_NICK")
+    if not oauth_token:
+        raise SystemExit(
+            "missing oauth token: pass --oauth-token or set TWITCH_OAUTH_TOKEN"
+        )
+    if not nickname:
+        raise SystemExit(
+            "missing nickname: pass --nickname or set TWITCH_CHAT_NICK"
+        )
 
-    if args.client_id and args.access_token:
-        metadata = get_video_metadata(args.client_id, args.access_token, args.channel)
+    if client_id and access_token:
+        metadata = get_video_metadata(client_id, access_token, args.channel)
         title = metadata.get("title") or "Unknown title"
         channel = metadata.get("channel") or args.channel
         print(f"Connected to {channel}: {title}", flush=True)
 
-    for msg in iter_live_chat_messages(args.channel, args.oauth_token, args.nickname):
+    for msg in iter_live_chat_messages(args.channel, oauth_token, nickname):
         display_name = msg.get("display_name") or "viewer"
         message = msg.get("message") or ""
         published_at = msg.get("published_at") or ""
