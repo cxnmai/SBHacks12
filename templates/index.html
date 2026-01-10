@@ -1,131 +1,174 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Livestream Summary</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
-  </head>
-  <body>
-    <main class="app">
-      <section class="frame">
-        <header>
-          <p class="eyebrow">Livestream Summarizer</p>
-          <h1>Turn fast chats into clear summaries.</h1>
-          <p class="subtitle">
-            Paste your YouTube livestream link, pick a mode, and watch the summary
-            update in real time.
-          </p>
-        </header>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Livestream Summary</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='styles.css') }}"
+        />
+    </head>
+    <body>
+        <main class="app">
+            <section class="frame">
+                <header>
+                    <h1>Spectator</h1>
+                    <p class="eyebrow">
+                        An agent that constantly reads what viewers are saying
+                        and updates you with what it sees.
+                    </p>
+                    <p class="subtitle">
+                        Paste your YouTube livestream link, pick a mode, and
+                        watch the summary update in real time.
+                    </p>
+                </header>
 
-        <section class="panel-grid">
-          <div class="card">
-          <form id="summary-form">
-            <label for="youtube-link">YouTube livestream link</label>
-            <input
-              id="youtube-link"
-              type="text"
-              placeholder="https://www.youtube.com/watch?v=xxxxxxxxxxx"
-              required
-            />
+                <section class="panel-grid">
+                    <div class="card">
+                        <form id="summary-form">
+                            <label for="youtube-link"
+                                >YouTube livestream link</label
+                            >
+                            <input
+                                id="youtube-link"
+                                type="text"
+                                placeholder="https://www.youtube.com/watch?v=xxxxxxxxxxx"
+                                required
+                            />
 
-            <div class="toggle-row">
-              <span class="toggle-label">Summary mode</span>
-              <div class="toggle-group" role="radiogroup">
-                <label class="toggle">
-                  <input type="radio" name="mode" value="general" checked />
-                  <span>Viewer</span>
-                </label>
-                <label class="toggle">
-                  <input type="radio" name="mode" value="streamer" />
-                  <span>Streamer</span>
-                </label>
-              </div>
-            </div>
+                            <div class="toggle-row">
+                                <span class="toggle-label">Summary mode</span>
+                                <div class="toggle-group" role="radiogroup">
+                                    <label class="toggle">
+                                        <input
+                                            type="radio"
+                                            name="mode"
+                                            value="general"
+                                            checked
+                                        />
+                                        <span>Viewer</span>
+                                    </label>
+                                    <label class="toggle">
+                                        <input
+                                            type="radio"
+                                            name="mode"
+                                            value="streamer"
+                                        />
+                                        <span>Streamer</span>
+                                    </label>
+                                </div>
+                            </div>
 
-            <div id="keyword-panel" class="keyword-panel hidden">
-              <label for="keyword-input">Streamer keywords</label>
-              <input
-                id="keyword-input"
-                type="text"
-                placeholder="funny, multikill, clutch"
-              />
-              <p class="hint">
-                Add comma-separated keywords to tag moments for clips.
-              </p>
-              <label for="keyword-threshold">Keyword match threshold</label>
-              <div class="slider-row">
-                <input
-                  id="keyword-threshold"
-                  type="range"
-                  min="1"
-                  max="4"
-                  step="1"
-                  value="2"
-                />
-                <span id="keyword-threshold-value" class="pill">2</span>
-              </div>
-              <p class="hint">
-                Increase to require repeated mentions before logging a timestamp.
-              </p>
-            </div>
+                            <div
+                                id="keyword-panel"
+                                class="keyword-panel hidden"
+                            >
+                                <label for="keyword-input"
+                                    >Streamer keywords</label
+                                >
+                                <input
+                                    id="keyword-input"
+                                    type="text"
+                                    placeholder="funny, multikill, clutch"
+                                />
+                                <p class="hint">
+                                    Add comma-separated keywords to tag moments
+                                    for clips.
+                                </p>
+                                <label for="keyword-threshold"
+                                    >Keyword match threshold</label
+                                >
+                                <div class="slider-row">
+                                    <input
+                                        id="keyword-threshold"
+                                        type="range"
+                                        min="1"
+                                        max="4"
+                                        step="1"
+                                        value="2"
+                                    />
+                                    <span
+                                        id="keyword-threshold-value"
+                                        class="pill"
+                                        >2</span
+                                    >
+                                </div>
+                                <p class="hint">
+                                    Increase to require repeated mentions before
+                                    logging a timestamp.
+                                </p>
+                            </div>
 
-            <div class="actions">
-              <button type="submit" class="primary">Start summarizing</button>
-              <button type="button" class="ghost" id="reset-btn">Reset</button>
-            </div>
-          </form>
-          <div class="status-row">
-            <span id="status-pill" class="pill">Idle</span>
-            <span id="video-pill" class="pill hidden"></span>
-            <span id="updated-pill" class="pill hidden"></span>
-          </div>
-          <p id="error-text" class="status error hidden"></p>
-          </div>
+                            <div class="actions">
+                                <button type="submit" class="primary">
+                                    Start summarizing
+                                </button>
+                                <button
+                                    type="button"
+                                    class="ghost"
+                                    id="reset-btn"
+                                >
+                                    Reset
+                                </button>
+                            </div>
+                        </form>
+                        <div class="status-row">
+                            <span id="status-pill" class="pill">Idle</span>
+                            <span id="video-pill" class="pill hidden"></span>
+                            <span id="updated-pill" class="pill hidden"></span>
+                        </div>
+                        <p id="error-text" class="status error hidden"></p>
+                    </div>
 
-          <aside class="card side-panel">
-            <h2>Video info</h2>
-            <div class="side-item">
-              <span class="side-label">Title</span>
-              <span id="video-title" class="side-value muted">Waiting...</span>
-            </div>
-            <div class="side-item">
-              <span class="side-label">Channel</span>
-              <span id="video-channel" class="side-value muted">Waiting...</span>
-            </div>
-          </aside>
-        </section>
+                    <aside class="card side-panel">
+                        <h2>Video info</h2>
+                        <div class="side-item">
+                            <span class="side-label">Title</span>
+                            <span id="video-title" class="side-value muted"
+                                >Waiting...</span
+                            >
+                        </div>
+                        <div class="side-item">
+                            <span class="side-label">Channel</span>
+                            <span id="video-channel" class="side-value muted"
+                                >Waiting...</span
+                            >
+                        </div>
+                    </aside>
+                </section>
 
-        <section class="card summary-box">
-          <h2>Summary</h2>
-          <div id="summary-content" class="summary-content muted">
-            Paste a livestream link to begin. Summaries refresh automatically once
-            the backend starts streaming.
-          </div>
-        </section>
+                <section class="card summary-box">
+                    <h2>Summary</h2>
+                    <div id="summary-content" class="summary-content muted">
+                        Paste a livestream link to begin. Summaries refresh
+                        automatically once the backend starts streaming.
+                    </div>
+                </section>
 
-        <section id="history-panel" class="card summary-box hidden">
-          <h2>Summary history</h2>
-          <div id="history-content" class="summary-content muted">
-            Summaries will appear here as they update.
-          </div>
-        </section>
+                <section id="history-panel" class="card summary-box hidden">
+                    <h2>Summary history</h2>
+                    <div id="history-content" class="summary-content muted">
+                        Summaries will appear here as they update.
+                    </div>
+                </section>
 
-        <section id="events-panel" class="card summary-box hidden">
-          <h2>Keyword timestamps</h2>
-          <div id="events-content" class="summary-content muted">
-            Add keywords in streamer mode to start logging timestamps.
-          </div>
-        </section>
-      </section>
-    </main>
+                <section id="events-panel" class="card summary-box hidden">
+                    <h2>Keyword timestamps</h2>
+                    <div id="events-content" class="summary-content muted">
+                        Add keywords in streamer mode to start logging
+                        timestamps.
+                    </div>
+                </section>
+            </section>
+        </main>
 
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
-  </body>
+        <script src="{{ url_for('static', filename='app.js') }}"></script>
+    </body>
 </html>

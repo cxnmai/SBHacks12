@@ -14,7 +14,7 @@ from chatsynthesizer import (
     summarize_with_keywords,
 )
 from gemini import load_dotenv
-from streamchat import get_live_chat_id, get_video_metadata, iter_live_chat_messages
+from ytstreamchat import get_live_chat_id, get_video_metadata, iter_live_chat_messages
 
 load_dotenv()
 
