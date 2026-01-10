@@ -16,12 +16,14 @@ const videoTitle = document.getElementById("video-title");
 const videoChannel = document.getElementById("video-channel");
 const historyPanel = document.getElementById("history-panel");
 const historyContent = document.getElementById("history-content");
+const rateChartCanvas = document.getElementById("rate-chart");
 
 let pollTimer = null;
 let currentVideoId = "";
 let currentMode = "general";
 let currentKeywords = "";
 let currentThreshold = "2";
+let rateChart = null;
 
 const parseVideoId = (value) => {
   if (!value) return "";
@@ -126,6 +128,117 @@ const updateHistory = (history) => {
   historyContent.appendChild(list);
 };
 
+const initRateChart = () => {
+  if (!rateChartCanvas) return;
+  
+  if (rateChart) {
+    rateChart.destroy();
+  }
+
+  const ctx = rateChartCanvas.getContext("2d");
+  rateChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: "Messages per second",
+          data: [],
+          borderColor: "rgba(130, 241, 255, 1)",
+          backgroundColor: "rgba(130, 241, 255, 0.1)",
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            color: "rgba(244, 246, 255, 0.9)",
+            font: {
+              family: '"Space Grotesk", "Segoe UI", sans-serif',
+            },
+          },
+        },
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          backgroundColor: "rgba(43, 15, 104, 0.95)",
+          titleColor: "rgba(244, 246, 255, 1)",
+          bodyColor: "rgba(244, 246, 255, 0.9)",
+          borderColor: "rgba(130, 241, 255, 0.5)",
+          borderWidth: 1,
+        },
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: "rgba(244, 246, 255, 0.7)",
+            font: {
+              family: '"Space Grotesk", "Segoe UI", sans-serif',
+            },
+          },
+          grid: {
+            color: "rgba(255, 255, 255, 0.1)",
+          },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: "rgba(244, 246, 255, 0.7)",
+            font: {
+              family: '"Space Grotesk", "Segoe UI", sans-serif',
+            },
+          },
+          grid: {
+            color: "rgba(255, 255, 255, 0.1)",
+          },
+          title: {
+            display: true,
+            text: "Messages/sec",
+            color: "rgba(244, 246, 255, 0.9)",
+            font: {
+              family: '"Space Grotesk", "Segoe UI", sans-serif',
+            },
+          },
+        },
+      },
+      interaction: {
+        mode: "nearest",
+        axis: "x",
+        intersect: false,
+      },
+    },
+  });
+};
+
+const updateRateChart = (rates) => {
+  if (!rateChart || !Array.isArray(rates) || rates.length === 0) {
+    return;
+  }
+
+  // Limit to last 100 points for performance
+  const maxPoints = 100;
+  const displayRates = rates.slice(-maxPoints);
+  
+  // Generate labels (just index numbers for simplicity)
+  const labels = displayRates.map((_, index) => {
+    const position = rates.length - displayRates.length + index;
+    return position + 1;
+  });
+
+  rateChart.data.labels = labels;
+  rateChart.data.datasets[0].data = displayRates;
+  rateChart.update("none"); // 'none' mode for smooth updates without animation
+};
+
 const setModeVisibility = (mode) => {
   if (mode === "streamer") {
     keywordPanel.classList.remove("hidden");
@@ -174,6 +287,10 @@ const fetchSummary = async () => {
       videoTitle.classList.toggle("muted", !payload.videoTitle);
       videoChannel.classList.toggle("muted", !payload.videoChannel);
     }
+    // Update rate chart with rates array
+    if (Array.isArray(payload.rates)) {
+      updateRateChart(payload.rates);
+    }
     setStatus(payload.summary ? "Live" : "Waiting");
     if (payload.updatedAt) {
       const updated = new Date(payload.updatedAt * 1000);
@@ -216,6 +333,8 @@ form.addEventListener("submit", (event) => {
     updateEvents([]);
     updateHistory([]);
   }
+  // Initialize chart when starting
+  initRateChart();
   setModeVisibility(currentMode);
   startPolling();
 });
@@ -240,6 +359,8 @@ resetBtn.addEventListener("click", () => {
   }
   videoPill.classList.add("hidden");
   updatedPill.classList.add("hidden");
+  // Reset chart
+  initRateChart();
   setModeVisibility(currentMode);
   if (pollTimer) {
     clearTimeout(pollTimer);
@@ -282,4 +403,6 @@ if (keywordThreshold) {
   });
 }
 
+// Initialize chart on page load
+initRateChart();
 setModeVisibility(currentMode);

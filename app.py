@@ -73,6 +73,7 @@ class ChatSummaryWorker:
         self._lock = threading.Lock()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
+        self.rates = []
 
     def snapshot(self) -> Dict[str, object]:
         with self._lock:
@@ -84,6 +85,7 @@ class ChatSummaryWorker:
                 "videoTitle": self.video_title,
                 "videoChannel": self.video_channel,
                 "summaryHistory": list(self.summary_history),
+                "rates": list(self.rates),
             }
 
     def _set_error(self, message: str) -> None:
@@ -128,6 +130,12 @@ class ChatSummaryWorker:
                     messages.pop(0)
 
                 rate = compute_rate(messages, rate_sample_size)
+                with self._lock:
+                    self.rates.append(rate)
+                    # Limit rates array to last 200 points to prevent memory issues
+                    if len(self.rates) > 200:
+                        self.rates = self.rates[-200:]
+                print(str(len(messages)))
                 window_seconds = compute_window_seconds(
                     rate, min_window_seconds, max_window_seconds
                 )
