@@ -1,10 +1,12 @@
 import os
+import json
 import threading
 import time
 from typing import Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
 from flask import Flask, jsonify, render_template, request
+from urllib.request import Request, urlopen
 
 from chatvelocitychart import ChatVelocityChart
 from chatsynthesizer import (
@@ -287,6 +289,47 @@ def summary() -> Tuple[str, int]:
     worker = get_worker(resolved_id, mode, tuple(keywords), keyword_threshold)
     snapshot = worker.snapshot()
     return jsonify(snapshot), 200
+
+
+@app.route("/oauth/twitch/callback")
+def twitch_oauth_callback() -> Tuple[str, int]:
+    code = request.args.get("code", "")
+    if not code:
+        return jsonify({"error": "Missing code parameter."}), 400
+
+    client_id = os.getenv("TWITCH_CLIENT_ID", "")
+    client_secret = os.getenv("TWITCH_CLIENT_SECRET", "")
+    redirect_uri = os.getenv(
+        "TWITCH_REDIRECT_URI",
+        "https://cannon-unconcealing-sharice.ngrok-free.dev/oauth/twitch/callback",
+    )
+    if not client_id or not client_secret:
+        return jsonify({"error": "Missing TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET."}), 400
+
+    payload = (
+        f"client_id={client_id}&client_secret={client_secret}&code={code}"
+        f"&grant_type=authorization_code&redirect_uri={redirect_uri}"
+    ).encode("utf-8")
+    req = Request(
+        "https://id.twitch.tv/oauth2/token",
+        data=payload,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    try:
+        with urlopen(req, timeout=15) as response:
+            body = response.read().decode("utf-8")
+            token_payload = json.loads(body)
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": f"Token exchange failed: {exc}"}), 500
+
+    return jsonify(
+        {
+            "access_token": token_payload.get("access_token"),
+            "refresh_token": token_payload.get("refresh_token"),
+            "scope": token_payload.get("scope"),
+            "expires_in": token_payload.get("expires_in"),
+        }
+    ), 200
 
 
 if __name__ == "__main__":
