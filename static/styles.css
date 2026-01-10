@@ -300,6 +300,17 @@ button:hover {
   }
 }
 
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.chart-container canvas {
+  max-height: 100%;
+}
+
 @media (max-width: 600px) {
   .card {
     padding: 18px;
@@ -309,5 +320,8 @@ button:hover {
   }
   .panel-grid {
     grid-template-columns: 1fr;
+  }
+  .chart-container {
+    height: 250px;
   }
 }
