@@ -47,6 +47,7 @@ pip install -r requirements.txt
 ```
 cd frontend
 npm install
+npm install react-icons
 ```
 
 ## Run the app

@@ -98,6 +98,7 @@ class ChatSummaryWorker:
         self.last_keyword_hit = {}
         self.pending_keyword_hits = {}
         self.summary_history = []
+        self.max_history = 20000
         self._lock = threading.Lock()
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -280,8 +281,8 @@ class ChatSummaryWorker:
                     self.summary_history.append(
                         {"summary": condensed, "timestamp": self._format_runtime(now)}
                     )
-                    if len(self.summary_history) > 10:
-                        self.summary_history = self.summary_history[-10:]
+                    if len(self.summary_history) > self.max_history:
+                        self.summary_history = self.summary_history[-self.max_history :]
 
                 last_summary_time = now
                 last_summary_count = len(messages)

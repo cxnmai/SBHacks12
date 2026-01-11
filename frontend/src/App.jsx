@@ -784,7 +784,7 @@ function App() {
                   <input
                     id="keyword-input"
                     type="text"
-                    placeholder="funny, multikill, clutch"
+                    placeholder="funny, rare moment, clutch"
                     value={draftKeywords}
                     onChange={(e) => setDraftKeywords(e.target.value)}
                   />
