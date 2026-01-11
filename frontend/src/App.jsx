@@ -173,10 +173,7 @@ function App() {
     }
     const startTs = streamStartRef.current;
     if (!startTs) return { summary: "", runtime: "" };
-    const elapsed = Math.max(
-      0,
-      Math.floor(points[index].timestamp - startTs),
-    );
+    const elapsed = Math.max(0, Math.floor(points[index].timestamp - startTs));
     let closest = "";
     let closestRuntime = "";
     let closestDelta = Number.POSITIVE_INFINITY;
@@ -402,7 +399,7 @@ function App() {
             },
             grid: {},
             title: {
-              display: true, 
+              display: true,
               text: "Messages/sec",
               font: {
                 family: '"Space Grotesk", "Segoe UI", sans-serif',
@@ -713,10 +710,9 @@ function App() {
       <section className="frame">
         <header>
           <h1>Spectator</h1>
-          <p className="eyebrow">Livestream Summarizer</p>
           <p className="subtitle">
-            Paste your livestream link, pick a mode, and watch the summary
-            update in real time.
+            An agentic integration for livestream chat analytics and viewer
+            assistance.
           </p>
         </header>
         <section className="card config-panel">
@@ -927,7 +923,9 @@ function App() {
                     const summaryText =
                       typeof entry.summary === "string" ? entry.summary : "";
                     const runtime =
-                      typeof entry.timestamp === "string" ? entry.timestamp : "";
+                      typeof entry.timestamp === "string"
+                        ? entry.timestamp
+                        : "";
                     const isExpanded =
                       isPointerDown && expandedHistoryIndex === idx;
                     return (
@@ -941,13 +939,13 @@ function App() {
                       >
                         <span className="history-text">
                           {isExpanded
-                            ? splitIntoLines(summaryText.replace(/\n/g, " ")).map(
-                                (line, lineIdx) => (
-                                  <span className="history-line" key={lineIdx}>
-                                    {line}
-                                  </span>
-                                ),
-                              )
+                            ? splitIntoLines(
+                                summaryText.replace(/\n/g, " "),
+                              ).map((line, lineIdx) => (
+                                <span className="history-line" key={lineIdx}>
+                                  {line}
+                                </span>
+                              ))
                             : summaryText.replace(/\n/g, " ")}
                         </span>
                         <span className="history-runtime">
@@ -1055,14 +1053,10 @@ function App() {
                   <div className="chart-hover-title">
                     Closest summary
                     {hoveredRuntime ? (
-                      <span className="chart-hover-time">
-                        {hoveredRuntime}
-                      </span>
+                      <span className="chart-hover-time">{hoveredRuntime}</span>
                     ) : null}
                   </div>
-                  <div className="chart-hover-body">
-                    {hoveredSummary}
-                  </div>
+                  <div className="chart-hover-body">{hoveredSummary}</div>
                 </aside>
               ) : null}
             </div>
