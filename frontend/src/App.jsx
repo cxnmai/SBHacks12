@@ -360,7 +360,7 @@ function App() {
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    const maxPoints = 100;
+    const maxPoints = 20000;
     const seriesRates =
       Array.isArray(ratePoints) && ratePoints.length
         ? ratePoints.map((point) => point.rate)
@@ -435,7 +435,13 @@ function App() {
       active = false;
       if (timerId) window.clearTimeout(timerId);
     };
-  }, [activeStreamId, activeMode, activeKeywords, activeThreshold, activeSource]);
+  }, [
+    activeStreamId,
+    activeMode,
+    activeKeywords,
+    activeThreshold,
+    activeSource,
+  ]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -547,6 +553,27 @@ function App() {
     const link = document.createElement("a");
     link.href = url;
     link.download = "keyword-timestamps.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportRates = () => {
+    if (!ratePoints.length && !rates.length) return;
+    const header = "elapsed,rate\n";
+    const rows = (ratePoints.length ? ratePoints : []).map((point) => {
+      const elapsed = formatElapsed(point.timestamp, streamStartTs);
+      return `"${elapsed}","${point.rate}"`;
+    });
+    const fallbackRows =
+      rows.length === 0 && rates.length
+        ? rates.map((rate, idx) => `"${idx}","${rate}"`)
+        : rows;
+    const csv = header + fallbackRows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "chat-velocity.csv";
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -733,8 +760,7 @@ function App() {
                 </span>
                 {activeStreamId ? (
                   <span id="video-pill" className="pill">
-                    {isActiveYouTube ? "Video ID" : "Channel"}:{" "}
-                    {activeStreamId}
+                    {isActiveYouTube ? "Video ID" : "Channel"}: {activeStreamId}
                   </span>
                 ) : null}
                 {updatedLabel ? (
@@ -836,7 +862,17 @@ function App() {
 
         {showStreamerPanels ? (
           <section className="card summary-box">
-            <h2>Chat frequency</h2>
+            <div className="panel-title">
+              <h2>Chat frequency</h2>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={handleExportRates}
+                disabled={!ratePoints.length && !rates.length}
+              >
+                Export CSV
+              </button>
+            </div>
             <div className="chart-actions">
               <button
                 type="button"

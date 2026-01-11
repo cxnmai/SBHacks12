@@ -8,7 +8,7 @@ class ChatVelocityChart:
     Thread-safe manager for chat velocity/rate data storage for chart visualization.
     """
 
-    def __init__(self, max_points: int = 200) -> None:
+    def __init__(self, max_points: int = 20000) -> None:
         """
         Initialize the chat velocity chart manager.
 
