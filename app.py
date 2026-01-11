@@ -1,14 +1,13 @@
-import os
 import json
+import os
 import threading
 import time
 from typing import Dict, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
-
-from flask import Flask, jsonify, render_template, request
 from urllib.request import Request, urlopen
 
-from chatvelocitychart import ChatVelocityChart
+from flask import Flask, jsonify, render_template, request
+
 from chatsynthesizer import (
     compute_rate,
     compute_window_seconds,
@@ -16,6 +15,7 @@ from chatsynthesizer import (
     select_window_messages,
     summarize_with_keywords,
 )
+from chatvelocitychart import ChatVelocityChart
 from gemini import generate_text, load_dotenv
 from twitchstreamchat import get_video_metadata as get_twitch_metadata
 from twitchstreamchat import iter_live_chat_messages as iter_twitch_chat
@@ -161,7 +161,9 @@ class ChatSummaryWorker:
                 access_token = os.getenv("TWITCH_OAUTH_TOKEN", "")
             if client_id and access_token:
                 try:
-                    metadata = get_twitch_metadata(client_id, access_token, self.stream_id)
+                    metadata = get_twitch_metadata(
+                        client_id, access_token, self.stream_id
+                    )
                 except Exception as exc:  # noqa: BLE001
                     self._set_error(str(exc))
                     return
@@ -197,6 +199,7 @@ class ChatSummaryWorker:
                     messages.pop(0)
 
                 rate = compute_rate(messages, rate_sample_size)
+
                 sample_time = time.time()
                 self.velocity_chart.add_rate(rate, sample_time)
                 window_seconds = compute_window_seconds(
@@ -344,7 +347,9 @@ def get_worker(
     with workers_lock:
         worker = workers.get(key)
         if worker is None:
-            worker = ChatSummaryWorker(source, stream_id, mode, keywords, keyword_threshold)
+            worker = ChatSummaryWorker(
+                source, stream_id, mode, keywords, keyword_threshold
+            )
             workers[key] = worker
         else:
             worker.update_settings(mode, keywords, keyword_threshold)
@@ -400,7 +405,9 @@ def twitch_oauth_callback() -> Tuple[str, int]:
         "https://cannon-unconcealing-sharice.ngrok-free.dev/oauth/twitch/callback",
     )
     if not client_id or not client_secret:
-        return jsonify({"error": "Missing TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET."}), 400
+        return jsonify(
+            {"error": "Missing TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET."}
+        ), 400
 
     payload = (
         f"client_id={client_id}&client_secret={client_secret}&code={code}"
