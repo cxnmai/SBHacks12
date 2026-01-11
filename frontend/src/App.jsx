@@ -168,10 +168,10 @@ function App() {
   const getClosestHistorySummary = (index) => {
     const historyItems = historyRef.current || [];
     const points = ratePointsRef.current || [];
-    if (!historyItems.length || !points.length || !points[index]) {
+    if (!points.length || !points[index]) {
       return { summary: "", runtime: "" };
     }
-    const startTs = streamStartRef.current;
+    const startTs = streamStartRef.current || points[0]?.timestamp;
     if (!startTs) return { summary: "", runtime: "" };
     const elapsed = Math.max(0, Math.floor(points[index].timestamp - startTs));
     let closest = "";
@@ -343,6 +343,7 @@ function App() {
             tension: 0.4,
             pointRadius: 0,
             pointHoverRadius: 4,
+            pointHitRadius: 12,
           },
         ],
       },
@@ -408,8 +409,12 @@ function App() {
           },
         },
         interaction: {
-          mode: "nearest",
+          mode: "index",
           axis: "x",
+          intersect: false,
+        },
+        hover: {
+          mode: "index",
           intersect: false,
         },
       },
@@ -431,14 +436,28 @@ function App() {
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    chart.options.onHover = (_event, elements) => {
-      if (!elements.length) {
+    chart.options.onHover = (event, elements) => {
+      const activeElements =
+        elements && elements.length
+          ? elements
+          : chart.getElementsAtEventForMode(
+              event,
+              "index",
+              { intersect: false },
+              false,
+            );
+      if (!activeElements.length) {
         setHoveredSummary("");
         setHoveredRuntime("");
         return;
       }
-      const index = elements[0].index ?? 0;
+      const index = activeElements[0].index ?? 0;
       const match = getClosestHistorySummary(index);
+      if (!match.summary) {
+        setHoveredSummary("No summary history yet.");
+        setHoveredRuntime("");
+        return;
+      }
       setHoveredSummary(match.summary);
       setHoveredRuntime(match.runtime);
     };
