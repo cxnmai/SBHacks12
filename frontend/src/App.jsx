@@ -13,8 +13,6 @@ import {
 import zoomPlugin from 'chartjs-plugin-zoom'
 import './App.css'
 
-console.log("REACTING")
-
 Chart.register(
   LineController,
   LineElement,
@@ -127,7 +125,8 @@ function App() {
           },
           zoom: {
             pan: {
-              enabled: false,
+              enabled: true,
+              mode: 'x',
             },
             zoom: {
               wheel: { enabled: false },
@@ -155,6 +154,7 @@ function App() {
           },
           y: {
             beginAtZero: true,
+            grace: '15%',
             ticks: {
               color: 'rgba(244, 246, 255, 0.7)',
               font: {
