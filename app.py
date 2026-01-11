@@ -275,7 +275,7 @@ class ChatSummaryWorker:
                     self.last_updated = now
                     self.last_error = ""
                     self.summary_history.append(
-                        {"summary": condensed, "timestamp": now}
+                        {"summary": condensed, "timestamp": self._format_runtime(now)}
                     )
                     if len(self.summary_history) > 10:
                         self.summary_history = self.summary_history[-10:]

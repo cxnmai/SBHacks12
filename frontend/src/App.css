@@ -374,7 +374,7 @@ button:hover {
 }
 
 .history-content {
-  max-height: 220px;
+  max-height: 180px;
   overflow-y: auto;
   padding-right: 6px;
 }
@@ -390,6 +390,48 @@ button:hover {
   border-radius: 12px;
   padding: 10px 12px;
   font-size: 0.95rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-runtime {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  background: var(--color-pill-bg);
+  padding: 4px 8px;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.history-card:hover .history-runtime,
+.history-card:focus-within .history-runtime {
+  opacity: 1;
+}
+
+.history-card.expanded .history-text {
+  display: flex;
+  flex-direction: column;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.history-line {
+  display: block;
   line-height: 1.5;
 }
 

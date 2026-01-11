@@ -101,10 +101,15 @@ function App() {
   const [rateLabels, setRateLabels] = useState([]);
   const [ratePoints, setRatePoints] = useState([]);
   const [streamStartTs, setStreamStartTs] = useState(null);
+  const [expandedHistoryIndex, setExpandedHistoryIndex] = useState(null);
+  const [isPointerDown, setIsPointerDown] = useState(false);
   const [theme, setTheme] = useState("default");
 
   const chartRef = useRef(null);
   const canvasRef = useRef(null);
+  const historyRef = useRef([]);
+  const ratePointsRef = useRef([]);
+  const streamStartRef = useRef(null);
 
   const showStreamerPanels = activeMode === "streamer";
   const showDraftStreamerPanels = draftMode === "streamer";
@@ -118,6 +123,45 @@ function App() {
       .map((line) => line.replace(/^[-*]\s*/, "").trim())
       .filter(Boolean);
   }, [summary]);
+
+  const parseRuntimeSeconds = (value) => {
+    if (!value || typeof value !== "string") return null;
+    const parts = value.split(":").map((part) => Number.parseInt(part, 10));
+    if (parts.some((part) => Number.isNaN(part))) return null;
+    if (parts.length === 2) {
+      return parts[0] * 60 + parts[1];
+    }
+    if (parts.length === 3) {
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    return null;
+  };
+
+  const truncateSummary = (text, limit = 140) => {
+    const trimmed = text.trim();
+    if (trimmed.length <= limit) return trimmed;
+    return `${trimmed.slice(0, limit - 1)}…`;
+  };
+
+  const splitIntoLines = (text, maxLength = 60) => {
+    const words = text.trim().split(/\s+/);
+    const lines = [];
+    let current = "";
+    for (const word of words) {
+      if (!current) {
+        current = word;
+        continue;
+      }
+      if ((current + " " + word).length > maxLength) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = `${current} ${word}`;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  };
 
   const formatElapsed = (timestamp, startTs) => {
     if (!timestamp) return "";
@@ -141,6 +185,33 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+
+  useEffect(() => {
+    ratePointsRef.current = ratePoints;
+  }, [ratePoints]);
+
+  useEffect(() => {
+    streamStartRef.current = streamStartTs;
+  }, [streamStartTs]);
+
+  useEffect(() => {
+    const handlePointerUp = () => {
+      setIsPointerDown(false);
+      setExpandedHistoryIndex(null);
+    };
+    window.addEventListener("mouseup", handlePointerUp);
+    window.addEventListener("touchend", handlePointerUp);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("mouseup", handlePointerUp);
+      window.removeEventListener("touchend", handlePointerUp);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, []);
 
   const handleThemeToggle = () => {
     setTheme((prev) => {
@@ -301,7 +372,7 @@ function App() {
             },
             grid: {},
             title: {
-              display: true,
+              display: true, 
               text: "Messages/sec",
               font: {
                 family: '"Space Grotesk", "Segoe UI", sans-serif',
@@ -329,6 +400,38 @@ function App() {
   useEffect(() => {
     applyChartTheme();
   }, [theme]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.options.plugins.tooltip.callbacks = {
+      beforeBody: (items) => {
+        const historyItems = historyRef.current || [];
+        if (!items.length || !historyItems.length) return "";
+        const index = items[0].dataIndex ?? 0;
+        const points = ratePointsRef.current || [];
+        if (!points.length || !points[index]) return "";
+        const elapsed = streamStartRef.current
+          ? Math.max(0, Math.floor(points[index].timestamp - streamStartRef.current))
+          : null;
+        if (elapsed === null) return "";
+        let closest = null;
+        let closestDelta = Number.POSITIVE_INFINITY;
+        for (const entry of historyItems) {
+          const runtime = parseRuntimeSeconds(entry.timestamp);
+          if (runtime === null) continue;
+          const delta = Math.abs(runtime - elapsed);
+          if (delta < closestDelta) {
+            closestDelta = delta;
+            closest = entry.summary || "";
+          }
+        }
+        if (!closest) return "";
+        return [`Summary: ${truncateSummary(closest)}`];
+      },
+    };
+    chart.update("none");
+  }, [history, ratePoints, streamStartTs]);
 
   useEffect(() => {
     if (Array.isArray(ratePoints) && ratePoints.length > 0) {
@@ -808,9 +911,33 @@ function App() {
                   {[...history].reverse().map((entry, idx) => {
                     const summaryText =
                       typeof entry.summary === "string" ? entry.summary : "";
+                    const runtime =
+                      typeof entry.timestamp === "string" ? entry.timestamp : "";
+                    const isExpanded =
+                      isPointerDown && expandedHistoryIndex === idx;
                     return (
-                      <div className="history-card" key={idx}>
-                        {summaryText.replace(/\n/g, " ")}
+                      <div
+                        className={`history-card ${isExpanded ? "expanded" : ""}`}
+                        key={idx}
+                        onPointerDown={() => {
+                          setIsPointerDown(true);
+                          setExpandedHistoryIndex(idx);
+                        }}
+                      >
+                        <span className="history-text">
+                          {isExpanded
+                            ? splitIntoLines(summaryText.replace(/\n/g, " ")).map(
+                                (line, lineIdx) => (
+                                  <span className="history-line" key={lineIdx}>
+                                    {line}
+                                  </span>
+                                ),
+                              )
+                            : summaryText.replace(/\n/g, " ")}
+                        </span>
+                        <span className="history-runtime">
+                          {runtime || "--:--"}
+                        </span>
                       </div>
                     );
                   })}
