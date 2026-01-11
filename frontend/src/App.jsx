@@ -671,20 +671,17 @@ function App() {
               className={`summary-content ${history.length ? "history-content" : "muted"}`}
             >
               {history.length ? (
-                <ul>
+                <div className="history-grid">
                   {[...history].reverse().map((entry, idx) => {
                     const summaryText =
                       typeof entry.summary === "string" ? entry.summary : "";
-                    const timestamp = entry.timestamp
-                      ? new Date(entry.timestamp * 1000).toLocaleTimeString()
-                      : "Unknown time";
                     return (
-                      <li
-                        key={idx}
-                      >{`${timestamp} - ${summaryText.replace(/\n/g, " ")}`}</li>
+                      <div className="history-card" key={idx}>
+                        {summaryText.replace(/\n/g, " ")}
+                      </div>
                     );
                   })}
-                </ul>
+                </div>
               ) : (
                 "Summaries will appear here as they update."
               )}

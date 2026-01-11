@@ -143,6 +143,8 @@ class ChatSummaryWorker:
             metadata = {}
             client_id = os.getenv("TWITCH_CLIENT_ID", "")
             access_token = os.getenv("TWITCH_ACCESS_TOKEN", "")
+            if not access_token:
+                access_token = os.getenv("TWITCH_OAUTH_TOKEN", "")
             if client_id and access_token:
                 try:
                     metadata = get_twitch_metadata(client_id, access_token, self.stream_id)
