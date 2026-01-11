@@ -17,13 +17,15 @@ from chatsynthesizer import (
     summarize_with_keywords,
 )
 from gemini import load_dotenv
+from twitchstreamchat import get_video_metadata as get_twitch_metadata
+from twitchstreamchat import iter_live_chat_messages as iter_twitch_chat
 from ytstreamchat import get_live_chat_id, get_video_metadata, iter_live_chat_messages
 
 load_dotenv()
 
 app = Flask(__name__)
 
-WorkerKey = Tuple[str, str, Tuple[str, ...], int]
+WorkerKey = Tuple[str, str, str, Tuple[str, ...], int]
 
 
 def extract_video_id(value: str) -> Optional[str]:
@@ -50,15 +52,38 @@ def extract_video_id(value: str) -> Optional[str]:
     return None
 
 
+def extract_twitch_channel(value: str) -> Optional[str]:
+    if not value:
+        return None
+    trimmed = value.strip()
+    if trimmed and all(c.isalnum() or c == "_" for c in trimmed):
+        return trimmed
+    try:
+        parsed = urlparse(trimmed)
+    except ValueError:
+        return None
+    if "twitch.tv" not in parsed.netloc:
+        return None
+    path = parsed.path.strip("/").split("/")
+    if not path:
+        return None
+    channel = path[0]
+    if channel and all(c.isalnum() or c == "_" for c in channel):
+        return channel
+    return None
+
+
 class ChatSummaryWorker:
     def __init__(
         self,
-        video_id: str,
+        source: str,
+        stream_id: str,
         mode: str,
         keywords: Tuple[str, ...],
         keyword_threshold: int,
     ) -> None:
-        self.video_id = video_id
+        self.source = source
+        self.stream_id = stream_id
         self.mode = mode
         self.keywords = keywords
         self.keyword_threshold = max(1, keyword_threshold)
@@ -96,18 +121,41 @@ class ChatSummaryWorker:
             self.last_error = message
 
     def _run(self) -> None:
-        api_key = os.getenv("YOUTUBE_API_KEY", "")
-        if not api_key:
-            self._set_error("Missing YOUTUBE_API_KEY.")
-            return
-        try:
-            live_chat_id = get_live_chat_id(api_key, self.video_id)
-            metadata = get_video_metadata(api_key, self.video_id)
-        except Exception as exc:  # noqa: BLE001
-            self._set_error(str(exc))
-            return
-
-        self._set_context(metadata)
+        if self.source == "youtube":
+            api_key = os.getenv("YOUTUBE_API_KEY", "")
+            if not api_key:
+                self._set_error("Missing YOUTUBE_API_KEY.")
+                return
+            try:
+                live_chat_id = get_live_chat_id(api_key, self.stream_id)
+                metadata = get_video_metadata(api_key, self.stream_id)
+            except Exception as exc:  # noqa: BLE001
+                self._set_error(str(exc))
+                return
+            self._set_context(metadata)
+            message_iter = iter_live_chat_messages(api_key, live_chat_id)
+        else:
+            oauth_token = os.getenv("TWITCH_OAUTH_TOKEN", "")
+            nickname = os.getenv("TWITCH_CHAT_NICK", "")
+            if not oauth_token or not nickname:
+                self._set_error("Missing TWITCH_OAUTH_TOKEN or TWITCH_CHAT_NICK.")
+                return
+            metadata = {}
+            client_id = os.getenv("TWITCH_CLIENT_ID", "")
+            access_token = os.getenv("TWITCH_ACCESS_TOKEN", "")
+            if client_id and access_token:
+                try:
+                    metadata = get_twitch_metadata(client_id, access_token, self.stream_id)
+                except Exception as exc:  # noqa: BLE001
+                    self._set_error(str(exc))
+                    return
+            if metadata:
+                self._set_context(metadata)
+            else:
+                self.video_title = ""
+                self.video_channel = self.stream_id
+                self.context = f"Channel: {self.stream_id}"
+            message_iter = iter_twitch_chat(self.stream_id, oauth_token, nickname)
 
         messages = []
         last_summary_time = 0.0
@@ -118,7 +166,7 @@ class ChatSummaryWorker:
         rate_sample_size = 30
 
         try:
-            for msg in iter_live_chat_messages(api_key, live_chat_id):
+            for msg in message_iter:
                 published_at = msg.get("published_at") or ""
                 timestamp = parse_timestamp(published_at) or time.time()
                 display_name = msg.get("display_name") or "viewer"
@@ -134,7 +182,6 @@ class ChatSummaryWorker:
 
                 rate = compute_rate(messages, rate_sample_size)
                 self.velocity_chart.add_rate(rate)
-                print(str(len(messages)))
                 window_seconds = compute_window_seconds(
                     rate, min_window_seconds, max_window_seconds
                 )
@@ -252,13 +299,17 @@ workers_lock = threading.Lock()
 
 
 def get_worker(
-    video_id: str, mode: str, keywords: Tuple[str, ...], keyword_threshold: int
+    source: str,
+    stream_id: str,
+    mode: str,
+    keywords: Tuple[str, ...],
+    keyword_threshold: int,
 ) -> ChatSummaryWorker:
-    key = (video_id, mode, keywords, keyword_threshold)
+    key = (source, stream_id, mode, keywords, keyword_threshold)
     with workers_lock:
         worker = workers.get(key)
         if worker is None:
-            worker = ChatSummaryWorker(video_id, mode, keywords, keyword_threshold)
+            worker = ChatSummaryWorker(source, stream_id, mode, keywords, keyword_threshold)
             workers[key] = worker
         return worker
 
@@ -270,15 +321,23 @@ def index() -> str:
 
 @app.route("/api/summary")
 def summary() -> Tuple[str, int]:
+    source = request.args.get("source", "youtube")
     video_id = request.args.get("videoId") or request.args.get("url")
     mode = request.args.get("mode", "general")
     keywords_raw = request.args.get("keywords", "")
     threshold_raw = request.args.get("keywordThreshold", "2")
     if mode not in ("general", "streamer"):
         mode = "general"
-    resolved_id = extract_video_id(video_id or "")
-    if not resolved_id:
-        return jsonify({"error": "Invalid YouTube link or video ID."}), 400
+    if source == "youtube":
+        resolved_id = extract_video_id(video_id or "")
+        if not resolved_id:
+            return jsonify({"error": "Invalid YouTube link or video ID."}), 400
+    elif source == "twitch":
+        resolved_id = extract_twitch_channel(video_id or "")
+        if not resolved_id:
+            return jsonify({"error": "Invalid Twitch channel or link."}), 400
+    else:
+        return jsonify({"error": "Invalid source. Use youtube or twitch."}), 400
     keywords = []
     if mode == "streamer" and keywords_raw:
         keywords = [item.strip() for item in keywords_raw.split(",") if item.strip()]
@@ -286,7 +345,7 @@ def summary() -> Tuple[str, int]:
         keyword_threshold = max(1, int(threshold_raw))
     except ValueError:
         keyword_threshold = 2
-    worker = get_worker(resolved_id, mode, tuple(keywords), keyword_threshold)
+    worker = get_worker(source, resolved_id, mode, tuple(keywords), keyword_threshold)
     snapshot = worker.snapshot()
     return jsonify(snapshot), 200
 

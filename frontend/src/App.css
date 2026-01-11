@@ -16,7 +16,7 @@
   font-size: 0.85rem;
   letter-spacing: 0.2em;
   margin: 0 0 12px;
-  color: rgba(244, 246, 255, 0.7);
+  color: var(--color-text-muted);
 }
 
 header h1 {
@@ -27,17 +27,17 @@ header h1 {
 
 .subtitle {
   margin: 0;
-  color: rgba(244, 246, 255, 0.7);
+  color: var(--color-text-muted);
   max-width: 620px;
   line-height: 1.6;
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
   border-radius: 22px;
   padding: 24px;
-  box-shadow: 0 24px 70px rgba(10, 10, 30, 0.45);
+  box-shadow: 0 24px 70px var(--color-card-shadow);
   backdrop-filter: blur(18px);
 }
 
@@ -67,7 +67,7 @@ header h1 {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
-  color: rgba(244, 246, 255, 0.7);
+  color: var(--color-text-muted);
 }
 
 .side-value {
@@ -85,21 +85,66 @@ label {
   font-size: 0.95rem;
 }
 
+.platform-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.platform-toggle {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.platform-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 12px;
+  background: var(--color-pill-bg);
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.platform-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.platform-button.active {
+  background: linear-gradient(130deg, var(--color-accent), var(--color-accent-2));
+  color: var(--color-bg-base);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 input[type="text"] {
   width: 100%;
   padding: 14px 16px;
   border-radius: 14px;
   border: 1px solid transparent;
-  background: rgba(12, 15, 50, 0.55);
-  color: #f4f6ff;
+  background: var(--color-input-bg);
+  color: var(--color-text);
   font-size: 1rem;
   outline: none;
   transition: border 0.2s ease, box-shadow 0.2s ease;
 }
 
 input[type="text"]:focus {
-  border-color: #82f1ff;
-  box-shadow: 0 0 0 3px rgba(130, 241, 255, 0.2);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-outline);
 }
 
 .toggle-row {
@@ -125,7 +170,7 @@ input[type="text"]:focus {
   align-items: center;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-pill-bg);
   cursor: pointer;
   font-size: 0.9rem;
   transition: background 0.2s ease;
@@ -142,8 +187,8 @@ input[type="text"]:focus {
 }
 
 .toggle input:checked + span {
-  color: #0f1225;
-  background: linear-gradient(130deg, #82f1ff, #b7a6ff);
+  color: var(--color-bg-base);
+  background: linear-gradient(130deg, var(--color-accent), var(--color-accent-2));
   padding: 6px 12px;
   border-radius: 999px;
 }
@@ -171,7 +216,7 @@ input[type="text"]:focus {
 
 .hint {
   margin: 0;
-  color: rgba(244, 246, 255, 0.7);
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
@@ -186,14 +231,14 @@ button {
 }
 
 .primary {
-  background: linear-gradient(130deg, #82f1ff, #b7a6ff);
-  color: #111;
-  box-shadow: 0 12px 30px rgba(130, 241, 255, 0.3);
+  background: linear-gradient(130deg, var(--color-accent), var(--color-accent-2));
+  color: var(--color-bg-base);
+  box-shadow: 0 12px 30px var(--color-accent-shadow);
 }
 
 .ghost {
-  background: rgba(255, 255, 255, 0.12);
-  color: #f4f6ff;
+  background: var(--color-button-ghost);
+  color: var(--color-text);
 }
 
 button:hover {
@@ -212,18 +257,18 @@ button:hover {
   align-items: center;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--color-pill-bg);
   font-size: 0.85rem;
 }
 
 .status {
   margin: 12px 0 0;
-  color: rgba(244, 246, 255, 0.7);
+  color: var(--color-text-muted);
   font-size: 0.95rem;
 }
 
 .error {
-  color: #ffd1e3;
+  color: var(--color-error);
 }
 
 .summary-box h2 {
@@ -251,7 +296,7 @@ button:hover {
 }
 
 .muted {
-  color: rgba(244, 246, 255, 0.7);
+  color: var(--color-text-muted);
 }
 
 @keyframes fadeIn {
@@ -288,6 +333,40 @@ button:hover {
 .small {
   padding: 8px 12px;
   font-size: 0.9rem;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid var(--color-card-border);
+  background: var(--color-card-bg);
+  color: var(--color-text-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 24px var(--color-card-shadow);
+  z-index: 20;
+}
+
+.theme-toggle .theme-icon {
+  display: block;
+  color: var(--color-accent);
+  fill: currentColor;
+  stroke: currentColor;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+  opacity: 1;
+}
+
+.theme-toggle:hover {
+  transform: translateY(-1px);
 }
 
 @media (max-width: 600px) {
