@@ -11,12 +11,10 @@ import {
   Tooltip,
 } from "chart.js";
 import zoomPlugin from "chartjs-plugin-zoom";
-import {
-  TbCircleDashedLetterD,
-  TbCircleLetterT,
-  TbCircleLetterY,
-} from "react-icons/tb";
+import { TbCircleDashedLetterD } from "react-icons/tb";
 import { FaRegMoon, FaRegSun } from "react-icons/fa";
+import twitchLogo from "../node_modules/streaming-service-logos/Twitch_Logo.svg";
+import youtubeLogo from "../node_modules/streaming-service-logos/YouTube_Logo.svg";
 import "./App.css";
 
 Chart.register(
@@ -495,30 +493,31 @@ function App() {
             <form id="summary-form" onSubmit={handleSubmit}>
               <label htmlFor="youtube-link" className="platform-label">
                 <span className="sr-only">Livestream link</span>
-                <div
+                <button
+                  type="button"
                   className="platform-toggle"
-                  role="group"
-                  aria-label="Platform"
+                  onClick={() => setSource(isYouTube ? "twitch" : "youtube")}
+                  aria-label="Toggle platform"
+                  aria-pressed={!isYouTube}
                 >
-                  <button
-                    type="button"
-                    className={`platform-button ${isYouTube ? "active" : ""}`}
-                    onClick={() => setSource("youtube")}
-                    aria-pressed={isYouTube}
-                    aria-label="YouTube"
+                  <span className="platform-option left" aria-hidden="true">
+                    <img src={youtubeLogo} alt="" />
+                  </span>
+                  <span className="platform-option right" aria-hidden="true">
+                    <img src={twitchLogo} alt="" />
+                  </span>
+                  <span
+                    className={`platform-knob ${
+                      isYouTube ? "left" : "right"
+                    }`}
+                    aria-hidden="true"
                   >
-                    <TbCircleLetterY />
-                  </button>
-                  <button
-                    type="button"
-                    className={`platform-button ${!isYouTube ? "active" : ""}`}
-                    onClick={() => setSource("twitch")}
-                    aria-pressed={!isYouTube}
-                    aria-label="Twitch"
-                  >
-                    <TbCircleLetterT />
-                  </button>
-                </div>
+                    <img
+                      src={isYouTube ? youtubeLogo : twitchLogo}
+                      alt=""
+                    />
+                  </span>
+                </button>
               </label>
               <input
                 id="youtube-link"

@@ -92,30 +92,60 @@ label {
 }
 
 .platform-toggle {
-  display: inline-flex;
-  gap: 8px;
-}
-
-.platform-button {
-  width: 36px;
-  height: 36px;
+  position: relative;
+  width: 96px;
+  height: 44px;
   padding: 0;
-  border-radius: 12px;
-  background: var(--color-pill-bg);
+  border-radius: 999px;
+  border: 1px solid var(--color-card-border);
+  background: var(--color-card-bg);
   color: var(--color-text-muted);
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.platform-option {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  opacity: 0.5;
 }
 
-.platform-button svg {
-  width: 20px;
-  height: 20px;
+.platform-option img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
 }
 
-.platform-button.active {
+.platform-knob {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 36px;
+  height: 36px;
+  border-radius: 16px;
   background: linear-gradient(130deg, var(--color-accent), var(--color-accent-2));
-  color: var(--color-bg-base);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.platform-knob.right {
+  transform: translateX(48px);
+}
+
+.platform-knob img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
 }
 
 .sr-only {
