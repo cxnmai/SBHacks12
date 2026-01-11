@@ -13,8 +13,8 @@ import {
 import zoomPlugin from "chartjs-plugin-zoom";
 import { TbCircleDashedLetterD } from "react-icons/tb";
 import { FaRegMoon, FaRegSun } from "react-icons/fa";
-import twitchLogo from "../node_modules/streaming-service-logos/Twitch_Logo.svg";
-import youtubeLogo from "../node_modules/streaming-service-logos/YouTube_Logo.svg";
+import twitchLogo from "./assets/streaming-service-logos/Twitch_Logo.svg";
+import youtubeLogo from "./assets/streaming-service-logos/YouTube_Logo.svg";
 import "./App.css";
 
 Chart.register(
