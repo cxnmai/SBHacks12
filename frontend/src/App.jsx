@@ -103,6 +103,8 @@ function App() {
   const [streamStartTs, setStreamStartTs] = useState(null);
   const [expandedHistoryIndex, setExpandedHistoryIndex] = useState(null);
   const [isPointerDown, setIsPointerDown] = useState(false);
+  const [hoveredSummary, setHoveredSummary] = useState("");
+  const [hoveredRuntime, setHoveredRuntime] = useState("");
   const [theme, setTheme] = useState("default");
 
   const chartRef = useRef(null);
@@ -161,6 +163,34 @@ function App() {
     }
     if (current) lines.push(current);
     return lines;
+  };
+
+  const getClosestHistorySummary = (index) => {
+    const historyItems = historyRef.current || [];
+    const points = ratePointsRef.current || [];
+    if (!historyItems.length || !points.length || !points[index]) {
+      return { summary: "", runtime: "" };
+    }
+    const startTs = streamStartRef.current;
+    if (!startTs) return { summary: "", runtime: "" };
+    const elapsed = Math.max(
+      0,
+      Math.floor(points[index].timestamp - startTs),
+    );
+    let closest = "";
+    let closestRuntime = "";
+    let closestDelta = Number.POSITIVE_INFINITY;
+    for (const entry of historyItems) {
+      const runtime = parseRuntimeSeconds(entry.timestamp);
+      if (runtime === null) continue;
+      const delta = Math.abs(runtime - elapsed);
+      if (delta < closestDelta) {
+        closestDelta = delta;
+        closest = entry.summary || "";
+        closestRuntime = entry.timestamp || "";
+      }
+    }
+    return { summary: closest, runtime: closestRuntime };
   };
 
   const formatElapsed = (timestamp, startTs) => {
@@ -404,31 +434,16 @@ function App() {
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    chart.options.plugins.tooltip.callbacks = {
-      beforeBody: (items) => {
-        const historyItems = historyRef.current || [];
-        if (!items.length || !historyItems.length) return "";
-        const index = items[0].dataIndex ?? 0;
-        const points = ratePointsRef.current || [];
-        if (!points.length || !points[index]) return "";
-        const elapsed = streamStartRef.current
-          ? Math.max(0, Math.floor(points[index].timestamp - streamStartRef.current))
-          : null;
-        if (elapsed === null) return "";
-        let closest = null;
-        let closestDelta = Number.POSITIVE_INFINITY;
-        for (const entry of historyItems) {
-          const runtime = parseRuntimeSeconds(entry.timestamp);
-          if (runtime === null) continue;
-          const delta = Math.abs(runtime - elapsed);
-          if (delta < closestDelta) {
-            closestDelta = delta;
-            closest = entry.summary || "";
-          }
-        }
-        if (!closest) return "";
-        return [`Summary: ${truncateSummary(closest)}`];
-      },
+    chart.options.onHover = (_event, elements) => {
+      if (!elements.length) {
+        setHoveredSummary("");
+        setHoveredRuntime("");
+        return;
+      }
+      const index = elements[0].index ?? 0;
+      const match = getClosestHistorySummary(index);
+      setHoveredSummary(match.summary);
+      setHoveredRuntime(match.runtime);
     };
     chart.update("none");
   }, [history, ratePoints, streamStartTs]);
@@ -1000,31 +1015,56 @@ function App() {
                 Export CSV
               </button>
             </div>
-            <div className="chart-actions">
-              <button
-                type="button"
-                className="ghost small"
-                onClick={handleZoomIn}
-              >
-                +
-              </button>
-              <button
-                type="button"
-                className="ghost small"
-                onClick={handleZoomOut}
-              >
-                -
-              </button>
-              <button
-                type="button"
-                className="ghost small"
-                onClick={handleResetZoom}
-              >
-                Reset
-              </button>
-            </div>
-            <div className="chart-container">
-              <canvas id="rate-chart" ref={canvasRef} />
+            <div className="chart-layout">
+              <div className="chart-main">
+                <div className="chart-actions">
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={handleZoomIn}
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={handleZoomOut}
+                  >
+                    -
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost small"
+                    onClick={handleResetZoom}
+                  >
+                    Reset
+                  </button>
+                </div>
+                <div
+                  className="chart-container"
+                  onMouseLeave={() => {
+                    setHoveredSummary("");
+                    setHoveredRuntime("");
+                  }}
+                >
+                  <canvas id="rate-chart" ref={canvasRef} />
+                </div>
+              </div>
+              {hoveredSummary ? (
+                <aside className="chart-hover">
+                  <div className="chart-hover-title">
+                    Closest summary
+                    {hoveredRuntime ? (
+                      <span className="chart-hover-time">
+                        {hoveredRuntime}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="chart-hover-body">
+                    {hoveredSummary}
+                  </div>
+                </aside>
+              ) : null}
             </div>
           </section>
         ) : null}

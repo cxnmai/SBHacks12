@@ -461,6 +461,43 @@ button:hover {
   max-height: 100%;
 }
 
+.chart-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+}
+
+.chart-main {
+  min-width: 0;
+}
+
+.chart-hover {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.chart-hover-title {
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chart-hover-time {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.chart-hover-body {
+  font-size: 0.9rem;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
 .chart-actions {
   display: flex;
   gap: 10px;
@@ -540,5 +577,8 @@ button:hover {
   }
   .chart-container {
     height: 250px;
+  }
+  .chart-layout {
+    grid-template-columns: 1fr;
   }
 }
