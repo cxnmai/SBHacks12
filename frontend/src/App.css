@@ -37,7 +37,7 @@ header h1 {
   border: 1px solid var(--color-card-border);
   border-radius: 22px;
   padding: 24px;
-  box-shadow: 0 24px 70px var(--color-card-shadow);
+  box-shadow: none;
   backdrop-filter: blur(18px);
 }
 
@@ -537,7 +537,7 @@ button:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 24px var(--color-card-shadow);
+  box-shadow: none;
   z-index: 20;
 }
 
