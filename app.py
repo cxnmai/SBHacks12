@@ -16,7 +16,7 @@ from chatsynthesizer import (
     select_window_messages,
     summarize_with_keywords,
 )
-from gemini import load_dotenv
+from gemini import generate_text, load_dotenv
 from twitchstreamchat import get_video_metadata as get_twitch_metadata
 from twitchstreamchat import iter_live_chat_messages as iter_twitch_chat
 from ytstreamchat import get_live_chat_id, get_video_metadata, iter_live_chat_messages
@@ -25,7 +25,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-WorkerKey = Tuple[str, str, str, Tuple[str, ...], int]
+WorkerKey = Tuple[str, str]
 
 
 def extract_video_id(value: str) -> Optional[str]:
@@ -114,11 +114,25 @@ class ChatSummaryWorker:
                 "videoChannel": self.video_channel,
                 "summaryHistory": list(self.summary_history),
                 "rates": self.velocity_chart.get_rates(),
+                "ratePoints": self.velocity_chart.get_points(),
+                "streamStartTs": self.stream_start_ts or None,
             }
 
     def _set_error(self, message: str) -> None:
         with self._lock:
             self.last_error = message
+
+    def update_settings(
+        self, mode: str, keywords: Tuple[str, ...], keyword_threshold: int
+    ) -> None:
+        with self._lock:
+            self.mode = mode
+            self.keywords = keywords
+            self.keyword_threshold = max(1, keyword_threshold)
+
+    def _get_settings(self) -> Tuple[str, Tuple[str, ...], int]:
+        with self._lock:
+            return self.mode, self.keywords, self.keyword_threshold
 
     def _run(self) -> None:
         if self.source == "youtube":
@@ -183,7 +197,8 @@ class ChatSummaryWorker:
                     messages.pop(0)
 
                 rate = compute_rate(messages, rate_sample_size)
-                self.velocity_chart.add_rate(rate)
+                sample_time = time.time()
+                self.velocity_chart.add_rate(rate, sample_time)
                 window_seconds = compute_window_seconds(
                     rate, min_window_seconds, max_window_seconds
                 )
@@ -199,20 +214,25 @@ class ChatSummaryWorker:
                 if not window_messages:
                     continue
 
+                mode, keywords, keyword_threshold = self._get_settings()
                 summary, matched_keywords = summarize_with_keywords(
                     window_messages,
-                    self.mode,
-                    list(self.keywords),
+                    mode,
+                    list(keywords),
                     context=self.context,
                 )
                 if not summary:
                     continue
 
-                if matched_keywords and self.mode == "streamer":
+                condensed = self._condense_summary(summary)
+                if not condensed:
+                    condensed = summary
+
+                if matched_keywords and mode == "streamer":
                     first_ts = window_messages[0][0]
                     hit_ts = max(first_ts - 15, 0)
                     min_gap = 30
-                    min_matches = self.keyword_threshold
+                    min_matches = keyword_threshold
                     decay_window = 90
                     with self._lock:
                         stale = []
@@ -254,7 +274,9 @@ class ChatSummaryWorker:
                     self.latest_summary = summary
                     self.last_updated = now
                     self.last_error = ""
-                    self.summary_history.append({"summary": summary, "timestamp": now})
+                    self.summary_history.append(
+                        {"summary": condensed, "timestamp": now}
+                    )
                     if len(self.summary_history) > 10:
                         self.summary_history = self.summary_history[-10:]
 
@@ -295,6 +317,17 @@ class ChatSummaryWorker:
             return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         return f"{minutes:02d}:{seconds:02d}"
 
+    def _condense_summary(self, summary: str) -> str:
+        prompt = (
+            "Condense the following summary into at most two compact sentences. "
+            "Do not use bullet points. Keep it concise and readable.\n\n"
+            f"Summary:\n{summary}\n"
+        )
+        condensed = generate_text(prompt)
+        if not condensed:
+            return ""
+        return condensed.strip().replace("\n", " ")
+
 
 workers: Dict[WorkerKey, ChatSummaryWorker] = {}
 workers_lock = threading.Lock()
@@ -307,12 +340,14 @@ def get_worker(
     keywords: Tuple[str, ...],
     keyword_threshold: int,
 ) -> ChatSummaryWorker:
-    key = (source, stream_id, mode, keywords, keyword_threshold)
+    key = (source, stream_id)
     with workers_lock:
         worker = workers.get(key)
         if worker is None:
             worker = ChatSummaryWorker(source, stream_id, mode, keywords, keyword_threshold)
             workers[key] = worker
+        else:
+            worker.update_settings(mode, keywords, keyword_threshold)
         return worker
 
 

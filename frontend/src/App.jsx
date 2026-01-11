@@ -78,12 +78,17 @@ const getCssVar = (name, fallback) => {
 };
 
 function App() {
-  const [videoInput, setVideoInput] = useState("");
-  const [videoId, setVideoId] = useState("");
-  const [source, setSource] = useState("youtube");
-  const [mode, setMode] = useState("general");
-  const [keywords, setKeywords] = useState("");
-  const [threshold, setThreshold] = useState("2");
+  const [isEditing, setIsEditing] = useState(true);
+  const [draftInput, setDraftInput] = useState("");
+  const [draftSource, setDraftSource] = useState("youtube");
+  const [draftMode, setDraftMode] = useState("general");
+  const [draftKeywords, setDraftKeywords] = useState("");
+  const [draftThreshold, setDraftThreshold] = useState("2");
+  const [activeStreamId, setActiveStreamId] = useState("");
+  const [activeSource, setActiveSource] = useState("youtube");
+  const [activeMode, setActiveMode] = useState("general");
+  const [activeKeywords, setActiveKeywords] = useState("");
+  const [activeThreshold, setActiveThreshold] = useState("2");
   const [status, setStatus] = useState("Idle");
   const [error, setError] = useState("");
   const [summary, setSummary] = useState("");
@@ -94,13 +99,17 @@ function App() {
   const [updatedAt, setUpdatedAt] = useState(null);
   const [rates, setRates] = useState([]);
   const [rateLabels, setRateLabels] = useState([]);
+  const [ratePoints, setRatePoints] = useState([]);
+  const [streamStartTs, setStreamStartTs] = useState(null);
   const [theme, setTheme] = useState("default");
 
   const chartRef = useRef(null);
   const canvasRef = useRef(null);
 
-  const showStreamerPanels = mode === "streamer";
-  const isYouTube = source === "youtube";
+  const showStreamerPanels = activeMode === "streamer";
+  const showDraftStreamerPanels = draftMode === "streamer";
+  const isYouTube = draftSource === "youtube";
+  const isActiveYouTube = activeSource === "youtube";
 
   const summaryItems = useMemo(() => {
     if (!summary) return [];
@@ -109,6 +118,25 @@ function App() {
       .map((line) => line.replace(/^[-*]\s*/, "").trim())
       .filter(Boolean);
   }, [summary]);
+
+  const formatElapsed = (timestamp, startTs) => {
+    if (!timestamp) return "";
+    if (!startTs) {
+      return new Date(timestamp * 1000).toLocaleTimeString();
+    }
+    const delta = Math.max(0, Math.floor(timestamp - startTs));
+    const hours = Math.floor(delta / 3600);
+    const minutes = Math.floor((delta % 3600) / 60);
+    const seconds = delta % 60;
+    if (hours) {
+      return `${hours.toString().padStart(2, "0")}:${minutes
+        .toString()
+        .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+    }
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -303,6 +331,14 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
+    if (Array.isArray(ratePoints) && ratePoints.length > 0) {
+      setRateLabels(
+        ratePoints.map((point) =>
+          formatElapsed(point.timestamp, streamStartTs),
+        ),
+      );
+      return;
+    }
     setRateLabels((prev) => {
       if (!Array.isArray(rates)) return [];
       if (rates.length < prev.length) {
@@ -319,13 +355,19 @@ function App() {
       );
       return [...prev, ...appended];
     });
-  }, [rates]);
+  }, [rates, ratePoints, streamStartTs]);
 
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
     const maxPoints = 100;
-    const displayRates = Array.isArray(rates) ? rates.slice(-maxPoints) : [];
+    const seriesRates =
+      Array.isArray(ratePoints) && ratePoints.length
+        ? ratePoints.map((point) => point.rate)
+        : rates;
+    const displayRates = Array.isArray(seriesRates)
+      ? seriesRates.slice(-maxPoints)
+      : [];
     const displayLabels = Array.isArray(rateLabels)
       ? rateLabels.slice(-maxPoints)
       : [];
@@ -335,7 +377,7 @@ function App() {
   }, [rates, rateLabels]);
 
   useEffect(() => {
-    if (!videoId) return () => {};
+    if (!activeStreamId) return () => {};
     let active = true;
     let timerId;
 
@@ -344,18 +386,18 @@ function App() {
       setError("");
       try {
         const keywordParam =
-          mode === "streamer" && keywords
-            ? `&keywords=${encodeURIComponent(keywords)}`
+          activeMode === "streamer" && activeKeywords
+            ? `&keywords=${encodeURIComponent(activeKeywords)}`
             : "";
         const thresholdParam =
-          mode === "streamer"
-            ? `&keywordThreshold=${encodeURIComponent(threshold)}`
+          activeMode === "streamer"
+            ? `&keywordThreshold=${encodeURIComponent(activeThreshold)}`
             : "";
         const response = await fetch(
           `/api/summary?videoId=${encodeURIComponent(
-            videoId,
-          )}&mode=${encodeURIComponent(mode)}&source=${encodeURIComponent(
-            source,
+            activeStreamId,
+          )}&mode=${encodeURIComponent(activeMode)}&source=${encodeURIComponent(
+            activeSource,
           )}${keywordParam}${thresholdParam}`,
         );
         const raw = await response.text();
@@ -373,6 +415,10 @@ function App() {
         setVideoTitle(payload.videoTitle || "Unknown");
         setVideoChannel(payload.videoChannel || "Unknown");
         setRates(Array.isArray(payload.rates) ? payload.rates : []);
+        setRatePoints(
+          Array.isArray(payload.ratePoints) ? payload.ratePoints : [],
+        );
+        setStreamStartTs(payload.streamStartTs || null);
         setStatus(payload.summary ? "Live" : "Waiting");
         setUpdatedAt(payload.updatedAt || null);
       } catch (err) {
@@ -389,13 +435,13 @@ function App() {
       active = false;
       if (timerId) window.clearTimeout(timerId);
     };
-  }, [videoId, mode, keywords, threshold, source]);
+  }, [activeStreamId, activeMode, activeKeywords, activeThreshold, activeSource]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
     const id = isYouTube
-      ? parseVideoId(videoInput)
-      : parseTwitchChannel(videoInput);
+      ? parseVideoId(draftInput)
+      : parseTwitchChannel(draftInput);
     if (!id) {
       setError(
         isYouTube
@@ -404,24 +450,44 @@ function App() {
       );
       return;
     }
-    setVideoId(id);
+    const nextKey = `${draftSource}:${id}`;
+    const currentKey = activeStreamId
+      ? `${activeSource}:${activeStreamId}`
+      : "";
+    const streamChanged = nextKey !== currentKey;
+    if (streamChanged) {
+      setSummary("");
+      setEvents([]);
+      setHistory([]);
+      setRates([]);
+      setRateLabels([]);
+      setRatePoints([]);
+      setStreamStartTs(null);
+      setUpdatedAt(null);
+      setVideoTitle("Waiting...");
+      setVideoChannel("Waiting...");
+    }
+    setActiveStreamId(id);
+    setActiveSource(draftSource);
+    setActiveMode(draftMode);
+    setActiveKeywords(draftKeywords);
+    setActiveThreshold(draftThreshold);
     setStatus("Connecting");
     setError("");
-    setSummary("");
-    setEvents([]);
-    setHistory([]);
-    setRates([]);
-    setRateLabels([]);
-    setUpdatedAt(null);
+    setIsEditing(false);
   };
 
   const handleReset = () => {
-    setVideoInput("");
-    setVideoId("");
-    setSource("youtube");
-    setMode("general");
-    setKeywords("");
-    setThreshold("2");
+    setDraftInput("");
+    setDraftSource("youtube");
+    setDraftMode("general");
+    setDraftKeywords("");
+    setDraftThreshold("2");
+    setActiveStreamId("");
+    setActiveSource("youtube");
+    setActiveMode("general");
+    setActiveKeywords("");
+    setActiveThreshold("2");
     setStatus("Idle");
     setError("");
     setSummary("");
@@ -429,9 +495,12 @@ function App() {
     setHistory([]);
     setRates([]);
     setRateLabels([]);
+    setRatePoints([]);
+    setStreamStartTs(null);
     setVideoTitle("Waiting...");
     setVideoChannel("Waiting...");
     setUpdatedAt(null);
+    setIsEditing(true);
     const chart = chartRef.current;
     if (chart) {
       chart.data.labels = [];
@@ -464,6 +533,24 @@ function App() {
     return `Updated ${date.toLocaleTimeString()}`;
   }, [updatedAt]);
 
+  const handleExportTimestamps = () => {
+    if (!events.length) return;
+    const header = "timestamp,keyword\n";
+    const rows = events.map((event) => {
+      const timestamp = event.timestamp || "";
+      const keyword = (event.keyword || "").replace(/"/g, '""');
+      return `"${timestamp}","${keyword}"`;
+    });
+    const csv = header + rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "keyword-timestamps.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const inputPlaceholder = isYouTube
     ? "https://www.youtube.com/watch?v=xxxxxxxxxxx"
     : "https://www.twitch.tv/channelname";
@@ -483,20 +570,21 @@ function App() {
           <h1>Spectator</h1>
           <p className="eyebrow">Livestream Summarizer</p>
           <p className="subtitle">
-            Paste your YouTube livestream link, pick a mode, and watch the
-            summary update in real time.
+            Paste your livestream link, pick a mode, and watch the summary
+            update in real time.
           </p>
         </header>
-
-        <section className="panel-grid">
-          <div className="card">
+        <section className="card config-panel">
+          {isEditing ? (
             <form id="summary-form" onSubmit={handleSubmit}>
               <label htmlFor="youtube-link" className="platform-label">
                 <span className="sr-only">Livestream link</span>
                 <button
                   type="button"
                   className="platform-toggle"
-                  onClick={() => setSource(isYouTube ? "twitch" : "youtube")}
+                  onClick={() =>
+                    setDraftSource(isYouTube ? "twitch" : "youtube")
+                  }
                   aria-label="Toggle platform"
                   aria-pressed={!isYouTube}
                 >
@@ -507,15 +595,10 @@ function App() {
                     <img src={twitchLogo} alt="" />
                   </span>
                   <span
-                    className={`platform-knob ${
-                      isYouTube ? "left" : "right"
-                    }`}
+                    className={`platform-knob ${isYouTube ? "left" : "right"}`}
                     aria-hidden="true"
                   >
-                    <img
-                      src={isYouTube ? youtubeLogo : twitchLogo}
-                      alt=""
-                    />
+                    <img src={isYouTube ? youtubeLogo : twitchLogo} alt="" />
                   </span>
                 </button>
               </label>
@@ -524,8 +607,8 @@ function App() {
                 type="text"
                 placeholder={inputPlaceholder}
                 required
-                value={videoInput}
-                onChange={(e) => setVideoInput(e.target.value)}
+                value={draftInput}
+                onChange={(e) => setDraftInput(e.target.value)}
               />
 
               <div className="toggle-row">
@@ -536,8 +619,8 @@ function App() {
                       type="radio"
                       name="mode"
                       value="general"
-                      checked={mode === "general"}
-                      onChange={() => setMode("general")}
+                      checked={draftMode === "general"}
+                      onChange={() => setDraftMode("general")}
                     />
                     <span>Viewer</span>
                   </label>
@@ -546,23 +629,23 @@ function App() {
                       type="radio"
                       name="mode"
                       value="streamer"
-                      checked={mode === "streamer"}
-                      onChange={() => setMode("streamer")}
+                      checked={draftMode === "streamer"}
+                      onChange={() => setDraftMode("streamer")}
                     />
                     <span>Streamer</span>
                   </label>
                 </div>
               </div>
 
-              {showStreamerPanels && (
+              {showDraftStreamerPanels ? (
                 <div id="keyword-panel" className="keyword-panel">
                   <label htmlFor="keyword-input">Streamer keywords</label>
                   <input
                     id="keyword-input"
                     type="text"
                     placeholder="funny, multikill, clutch"
-                    value={keywords}
-                    onChange={(e) => setKeywords(e.target.value)}
+                    value={draftKeywords}
+                    onChange={(e) => setDraftKeywords(e.target.value)}
                   />
                   <p className="hint">
                     Add comma-separated keywords to tag moments for clips.
@@ -577,11 +660,11 @@ function App() {
                       min="1"
                       max="4"
                       step="1"
-                      value={threshold}
-                      onChange={(e) => setThreshold(e.target.value)}
+                      value={draftThreshold}
+                      onChange={(e) => setDraftThreshold(e.target.value)}
                     />
                     <span id="keyword-threshold-value" className="pill">
-                      {threshold}
+                      {draftThreshold}
                     </span>
                   </div>
                   <p className="hint">
@@ -589,60 +672,84 @@ function App() {
                     timestamp.
                   </p>
                 </div>
-              )}
+              ) : null}
 
               <div className="actions">
                 <button type="submit" className="primary">
-                  Start summarizing
+                  Start
                 </button>
                 <button type="button" className="ghost" onClick={handleReset}>
                   Reset
                 </button>
               </div>
             </form>
-            <div className="status-row">
-              <span id="status-pill" className="pill">
-                {status}
-              </span>
-              {videoId ? (
-                <span id="video-pill" className="pill">
-                  {isYouTube ? "Video ID" : "Channel"}: {videoId}
-                </span>
-              ) : null}
-              {updatedLabel ? (
-                <span id="updated-pill" className="pill">
-                  {updatedLabel}
-                </span>
-              ) : null}
-            </div>
-            {error ? (
-              <p id="error-text" className="status error">
-                {error}
-              </p>
-            ) : null}
-          </div>
-
-          <aside className="card side-panel">
-            <h2>Video info</h2>
-            <div className="side-item">
-              <span className="side-label">Title</span>
-              <span
-                id="video-title"
-                className={`side-value ${!videoTitle ? "muted" : ""}`}
+          ) : (
+            <div className="config-compact">
+              <div className="config-lines">
+                <div className="config-line">
+                  <img
+                    className="config-logo"
+                    src={isActiveYouTube ? youtubeLogo : twitchLogo}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                  <span className="config-channel truncate">
+                    {videoChannel || activeStreamId || "Unknown channel"}
+                  </span>
+                  <span className="config-title truncate">
+                    {videoTitle || "Unknown title"}
+                  </span>
+                </div>
+                {activeMode === "streamer" ? (
+                  <div className="config-line config-sub">
+                    <span className="truncate">
+                      Keywords: {activeKeywords || "none"}
+                    </span>
+                    <span>Threshold: {activeThreshold}</span>
+                  </div>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={() => {
+                  setDraftInput(activeStreamId);
+                  setDraftSource(activeSource);
+                  setDraftMode(activeMode);
+                  setDraftKeywords(activeKeywords);
+                  setDraftThreshold(activeThreshold);
+                  setIsEditing(true);
+                }}
               >
-                {videoTitle || "Waiting..."}
-              </span>
+                Edit
+              </button>
             </div>
-            <div className="side-item">
-              <span className="side-label">Channel</span>
-              <span
-                id="video-channel"
-                className={`side-value ${!videoChannel ? "muted" : ""}`}
-              >
-                {videoChannel || "Waiting..."}
-              </span>
-            </div>
-          </aside>
+          )}
+          {isEditing ? (
+            <>
+              <div className="status-row">
+                <span id="status-pill" className="pill">
+                  {status}
+                </span>
+                {activeStreamId ? (
+                  <span id="video-pill" className="pill">
+                    {isActiveYouTube ? "Video ID" : "Channel"}:{" "}
+                    {activeStreamId}
+                  </span>
+                ) : null}
+                {updatedLabel ? (
+                  <span id="updated-pill" className="pill">
+                    {updatedLabel}
+                  </span>
+                ) : null}
+              </div>
+              {error ? (
+                <p id="error-text" className="status error">
+                  {error}
+                </p>
+              ) : null}
+            </>
+          ) : null}
         </section>
 
         <section className="card summary-box">
@@ -691,7 +798,17 @@ function App() {
 
         {showStreamerPanels ? (
           <section id="events-panel" className="card summary-box">
-            <h2>Keyword timestamps</h2>
+            <div className="panel-title">
+              <h2>Keyword timestamps</h2>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={handleExportTimestamps}
+                disabled={!events.length}
+              >
+                Export CSV
+              </button>
+            </div>
             <div
               id="events-content"
               className={`summary-content ${events.length ? "" : "muted"}`}

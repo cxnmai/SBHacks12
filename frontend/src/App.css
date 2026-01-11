@@ -41,6 +41,60 @@ header h1 {
   backdrop-filter: blur(18px);
 }
 
+.config-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.config-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.config-lines {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.config-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.config-sub {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  justify-content: space-between;
+}
+
+.config-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex: 0 0 24px;
+}
+
+.config-channel {
+  flex: 0 0 180px;
+  font-weight: 600;
+}
+
+.config-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .panel-grid {
   display: grid;
   gap: 20px;
@@ -374,6 +428,17 @@ button:hover {
   margin-top: 4px;
 }
 
+.panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-title h2 {
+  margin: 0;
+}
+
 .small {
   padding: 8px 12px;
   font-size: 0.9rem;
@@ -422,6 +487,13 @@ button:hover {
   }
   .panel-grid {
     grid-template-columns: 1fr;
+  }
+  .config-compact {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .config-channel {
+    flex-basis: 140px;
   }
   .chart-container {
     height: 250px;
