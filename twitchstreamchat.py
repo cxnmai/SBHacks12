@@ -97,6 +97,7 @@ def iter_live_chat_messages(
     channel_name: str,
     oauth_token: str,
     nickname: str,
+    debug: bool = False,
 ):
     server = ("irc.chat.twitch.tv", 6697)
     backoff_seconds = 2
@@ -110,13 +111,21 @@ def iter_live_chat_messages(
 
             wrapped.sendall(f"PASS oauth:{oauth_token}\r\n".encode("utf-8"))
             wrapped.sendall(f"NICK {nickname}\r\n".encode("utf-8"))
-            wrapped.sendall("CAP REQ :twitch.tv/tags\r\n".encode("utf-8"))
+            wrapped.sendall(
+                "CAP REQ :twitch.tv/tags twitch.tv/commands twitch.tv/membership\r\n".encode(
+                    "utf-8"
+                )
+            )
             wrapped.sendall(f"JOIN #{channel_name}\r\n".encode("utf-8"))
 
             backoff_seconds = 2
 
             for line in sock_file:
                 stripped = line.strip()
+                if debug:
+                    print(f"[twitch-irc] {stripped}", flush=True)
+                if "Login authentication failed" in stripped:
+                    raise RuntimeError("twitch auth failed: invalid oauth token or nick")
                 if stripped.startswith("PING"):
                     wrapped.sendall("PONG :tmi.twitch.tv\r\n".encode("utf-8"))
                     continue
@@ -142,7 +151,7 @@ def iter_live_chat_messages(
                     "display_name": display_name,
                     "message": message,
                 }
-        except (OSError, ssl.SSLError):
+        except (OSError, ssl.SSLError, RuntimeError):
             time.sleep(backoff_seconds)
             backoff_seconds = min(backoff_seconds * 2, 60)
 
@@ -173,12 +182,22 @@ def main() -> int:
         default="",
         help="Twitch access token for metadata lookups",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Print raw IRC messages for troubleshooting",
+    )
     args = parser.parse_args()
 
     oauth_token = args.oauth_token or os.getenv("TWITCH_OAUTH_TOKEN", "")
     nickname = args.nickname or os.getenv("TWITCH_CHAT_NICK", "")
     client_id = args.client_id or os.getenv("TWITCH_CLIENT_ID", "")
     access_token = args.access_token or os.getenv("TWITCH_ACCESS_TOKEN", "")
+
+    if oauth_token.startswith("oauth:"):
+        oauth_token = oauth_token.split("oauth:", 1)[1]
+    nickname = nickname.strip().lstrip("#").lower()
+    channel = args.channel.strip().lstrip("#").lower()
 
     if not oauth_token:
         raise SystemExit(
@@ -190,12 +209,14 @@ def main() -> int:
         )
 
     if client_id and access_token:
-        metadata = get_video_metadata(client_id, access_token, args.channel)
+        metadata = get_video_metadata(client_id, access_token, channel)
         title = metadata.get("title") or "Unknown title"
-        channel = metadata.get("channel") or args.channel
-        print(f"Connected to {channel}: {title}", flush=True)
+        channel_name = metadata.get("channel") or channel
+        print(f"Connected to {channel_name}: {title}", flush=True)
+    else:
+        print(f"Connecting to Twitch chat: #{channel}", flush=True)
 
-    for msg in iter_live_chat_messages(args.channel, oauth_token, nickname):
+    for msg in iter_live_chat_messages(channel, oauth_token, nickname, debug=args.debug):
         display_name = msg.get("display_name") or "viewer"
         message = msg.get("message") or ""
         published_at = msg.get("published_at") or ""
